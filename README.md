@@ -1,213 +1,153 @@
-# First Responder RAG Portal
+# First Responder AI Portal
 
-An AI-powered web portal for firefighters, paramedics, and first responders. Combines a 360° interactive training video with a chatbot that answers emergency response questions using the official Emergency Response Guide (ERG), Rescue Sheet, and training video transcripts — all indexed into a Pinecone vector store and routed through an n8n AI agent.
+**Grounded AI + immersive training for electric-vehicle emergencies.**
+
+A web and VR (Meta Quest) training portal that pairs **360° walk-around videos** of real EV response training with an **AI assistant grounded in official manufacturer documents**, plus a **Gaussian-splat VR viewer** of scanned vehicles with hazard hotspots.
+
+**Live demo:** https://nec4-jumpstart.streamlit.app
+
+<p align="center">
+  <img src="docs/media/vr-demo.webp" alt="In-headset recording: a trainee asks a question from inside the 360° training video and the answer cites the ERG page, Rescue Sheet and video timestamp" width="720">
+  <br><em>Recorded on a Meta Quest 3: asking a question from inside the 360° training video. The answer cites the ERG page, the Rescue Sheet and the video timestamp it came from.</em>
+</p>
+
+| Desktop portal: 360° lecture + training assistant | VR splat viewer: hazard hotspots on a scanned EV |
+|---|---|
+| ![Desktop portal with 360° training video and chat panel](docs/media/portal-desktop.png) | ![Gaussian-splat scan of a Chevrolet Equinox EV; selecting a red hotspot opens the First Responder Loop cutting procedure](docs/media/splat-vr-demo.webp) |
+| | <sub>Gaussian-splat scan of a Chevrolet Equinox EV (`apps/splat-vr/`). Pointing at a hotspot opens the cutting procedure quoted from the ERG, with its page citation. Markers carry an **unverified-placement** banner until their position is checked against the ERG diagrams.</sub> |
 
 ---
 
-## What It Does
+## Why this exists
 
-- **360° Video Player** — interactive walk-around of the Ford Mach-E, drag to rotate, scroll to zoom
-- **AI Chatbot** — answers questions about HV shutdown, fire response, no-cut zones, airbag locations, etc.
-- **Three knowledge sources** routed by topic:
-  - `erg_full` — 38-page Emergency Response Guide (procedural steps)
-  - `rescue_sheet` — 4-page quick-reference diagram card (component locations)
-  - `video_transcript` — 360° training video narration (instructor walkthroughs)
+EVs change the rules for firefighters and rescuers: orange high-voltage cables that must never be cut, 12 V systems that keep airbags live, battery fires that can take thousands of gallons of water. The authoritative answers are in **Emergency Response Guides (ERGs) and Rescue Sheets**, dozens of pages per model and different for every vehicle. Nobody reads a 60-page PDF at a crash scene.
+
+In this setting a **wrong answer is worse than no answer**, so the system is designed to:
+
+1. **Retrieve per vehicle, not globally.** Each of the 13 vehicles has its own vector namespace, so a Tesla procedure can never leak into a Chevy answer.
+2. **Defer instead of guess.** With no vehicle identified, the assistant gives a generic safety baseline and asks which vehicle, instead of inventing a model-specific procedure.
+3. **Cite the source**, and say so when the document does not contain what was asked.
+4. **Train in context.** Trainees ask questions from inside a 360° video or a VR scan of the vehicle, not from a separate chat window.
 
 ---
 
-## Prerequisites
+## Results so far
 
-Install system dependencies (macOS):
+**Grounding and abstention (24-question study, [`docs/EV_responder_QA_comparison.md`](docs/EV_responder_QA_comparison.md))**
 
-```bash
-brew install poppler tesseract ffmpeg
+| Condition | Outcome |
+|---|---|
+| Question names **no vehicle** (16 questions) | 16/16 deferred with a generic safety baseline + "which vehicle?" (no fabricated procedures) |
+| Same 16 questions **with a vehicle named** (spread across all 13 vehicles) | **14/16 grounded, source-cited answers**; **2/16 correct refusals**: the asked-about feature is not in that vehicle's documents, and the assistant said so instead of inventing it |
+| 5 new vehicle-specific questions | 5/5 grounded, source-cited |
+
+**Retrieval depth.** With the default top-k = 4, vehicle-specific chunks fell outside the retrieved set and answers mixed facts across vehicles. Raising top-k to 10 on every per-vehicle retriever fixed the observed cross-vehicle hallucinations. The setting is now enforced by an automated drift check against the live workflow (`ops/n8n_sync.py --check`).
+
+**Transcript QA: work in progress.** A 90-question ground-truth set (`ops/eval/eval_questions.json`) is run automatically against the live assistant (`ops/eval/run_eval.py`). The first 30-question transcript run scored 12 pass / 3 fail / 15 needing hand review under a keyword-overlap heuristic. At least one failure traces to a lecture transcript not yet indexed. Next: index it, replace the heuristic with a rubric-based grader, and report retrieval recall@k.
+
+---
+
+## How it works
+
+```
+                       ┌─────────────────────────────── Browser / Meta Quest ───────────────────────────────┐
+                       │  360° video portal (IWSDK / WebXR)   ·   in-VR chat HUD + push-to-talk voice        │
+                       │  Gaussian-splat VR viewer (three.js + Spark) with ERG hazard hotspots              │
+                       └───────────────────────────────┬────────────────────────────────────────────────────┘
+                                                       │ question + session id
+                                                       ▼
+                                   n8n agent (router LLM)  ──  picks a tool per vehicle / per corpus
+                                                       │
+                     ┌─────────────────────────────────┼──────────────────────────────────┐
+                     ▼                                 ▼                                  ▼
+           13 per-vehicle namespaces          360° video transcripts            conversation memory
+           (ERG + Rescue Sheet, top-k=10)     (Whisper, timestamped)            (Postgres, per session)
+                     └──────────── Pinecone (text-embedding-3-small) ─────────────┘
 ```
 
-Install Python packages (Python 3.11 required):
+- **Ingestion:** PDFs are parsed with `unstructured` (OCR fallback for image-heavy pages), chunked, embedded and stored per vehicle, with `doc_type` metadata separating ERGs from Rescue Sheets. Training videos are transcribed locally with Whisper and indexed with timestamps so answers can point back into the video.
+- **Serving:** the n8n agent routes each question to the right vehicle's retriever (or the transcript corpus) and answers only from what it retrieves.
+- **XR:** built on Meta's Immersive Web SDK. It runs in any browser, in a desktop Quest emulator, or on a real headset. On Quest, voice input falls back to server-side Whisper because the Quest Browser has no native speech recognition.
+- **3D scans:** Gaussian-splat captures of real vehicles, calibrated for true scale and cropped to fit a standalone headset's rendering budget. Hazard markers stay flagged `verified: false` until confirmed against the ERG diagrams. A tool that tells a responder where to cut must never present a guess as fact.
 
-```bash
-pip install openai-whisper openai pinecone-client python-dotenv unstructured[pdf]
-```
+**Corpus:** 13 EV models (BMW, Cadillac, Chevrolet, Ford, GM BrightDrop, Hyundai, Nissan, Rivian, Tesla, Volkswagen), 23 ERG/Rescue-Sheet PDFs, plus the transcripts of the 360° training videos.
 
 ---
 
-## Setup
+## Try it in 3 steps
 
-### 1. Clone the repository
+You do **not** need any API keys. The chatbot already talks to a hosted AI, so you can just run the page.
+
+**1. Install Node.js** (version 20 or newer) from https://nodejs.org
+
+**2. Download the project and install it**
 
 ```bash
 git clone https://github.com/Irfan-Gazi0/RAG_Responder.git
-cd RAG_Responder
+cd RAG_Responder/apps/portal
+npm install
 ```
 
-### 2. Add API keys
-
-Create a `.env` file in the project root:
-
-```
-OPENAI_API_KEY=sk-...
-PINECONE_API_KEY=pcsk_...
-```
-
-You need:
-- [OpenAI API key](https://platform.openai.com/api-keys) — for embeddings (`text-embedding-3-small`) and the GPT-4o agent
-- [Pinecone API key](https://app.pinecone.io) — free Starter tier is sufficient
-
-### 3. Create the Pinecone index
-
-In the [Pinecone console](https://app.pinecone.io), create an index:
-
-| Setting | Value |
-|---|---|
-| Index name | `ford-mache-erg` |
-| Dimensions | `1536` |
-| Metric | `cosine` |
-| Cloud / Region | AWS `us-east-1` |
-
-### 4. Index the PDF documents
-
-Open `ingestion.ipynb` in VS Code, select the **Python 3.11** kernel, and run all cells.
-
-This partitions the ERG and Rescue Sheet PDFs, generates embeddings, and upserts into Pinecone under namespaces `erg_full` and `rescue_sheet`.
-
-> Safe to re-run. Delete `Ford Mache-E/processed.log` to force a full re-index.
-
-### 5. Add and transcribe training videos (optional)
-
-Place your 360° `.mp4` training videos into the `360/` folder, then run:
+**3. Start it**
 
 ```bash
-python3 transcribe_videos.py --model turbo
+npm run dev
 ```
 
-This uses local OpenAI Whisper to transcribe each video and saves a `*_segments.json` file per video into `Talk/`.
+Your browser opens at **https://localhost:8081**.
+It may warn "Not Secure". That's expected for a local test page. Click *Advanced → Proceed*.
 
-Already-transcribed files are skipped automatically. Use `--force` to re-transcribe.
+### Things to play with
 
-> **Note:** Transcription is slow on CPU. A 52-minute video takes roughly 10–20 minutes on an M-series Mac.
-
-### 6. Index the transcripts
-
-Open `ingestion_transcript.ipynb` in VS Code, select the **Python 3.11** kernel, and run all cells.
-
-This chunks the transcripts using a sliding window (10 segments, step 8), embeds them, and upserts into Pinecone under the `video_transcript` namespace with timestamps and video labels attached as metadata.
-
-> Safe to re-run — upsert is idempotent (same vector IDs overwrite, no duplicates).
-
-### 7. Set up the n8n AI agent
-
-1. Sign up at [n8n.io](https://n8n.io) (cloud or self-hosted)
-2. Go to **Workflows → Import** and upload `Sample n8n JSON/1.1 First Responder.json`
-3. In the imported workflow, update the credentials:
-   - **OpenAI Chat Model** and **Embeddings OpenAI** nodes → add your OpenAI API key
-   - **erg_full**, **rescue_sheet**, **video_transcript** Pinecone nodes → add your Pinecone API key
-   - **Postgres Chat Memory** → add a PostgreSQL connection (used for per-session chat history)
-4. Copy the **Webhook URL** from the Webhook node (it looks like `https://your-n8n.app.n8n.cloud/webhook/...`)
-5. Open `inspector_portal.html` and update the `WEBHOOK_URL` constant at the top of the `<script>` section:
-
-```javascript
-const WEBHOOK_URL = "https://your-n8n.app.n8n.cloud/webhook/your-webhook-id";
-```
-
-6. Activate the workflow in n8n (toggle to **Active**)
-
-### 8. Run the portal
-
-```bash
-python3 -m http.server 8080
-```
-
-Open [http://localhost:8080/inspector_portal.html](http://localhost:8080/inspector_portal.html) in your browser.
+- **Drag** on the video to look around in 360°.
+- **Ask the chatbot** something, for example:
+  - *Where are the no-cut zones on a Tesla Model S?*
+  - *How do I disable the high-voltage battery on a Chevy Bolt?*
+  - *How do I disable the high-voltage battery?* (no vehicle named; watch it ask which one)
+- Try the **Enter VR** button if you have a VR headset (Meta Quest). No headset? A built-in emulator runs on your computer.
 
 ---
 
-## Project Structure
+## What's in the folders
 
-```
-RAG_Responder/
-├── inspector_portal.html         # Web UI: 360° video + chatbot
-├── ingestion.ipynb               # PDF ingestion pipeline (ERG + Rescue Sheet)
-├── ingestion_transcript.ipynb    # Transcript ingestion pipeline
-├── transcribe_videos.py          # Transcribe videos → Talk/*_segments.json
-├── .env                          # API keys (not committed)
-├── 360/                          # 360° video files (not committed — too large)
-├── Ford Mache-E/
-│   ├── EmergencyResponseGuide-Ford-Mach-E-2026.pdf
-│   ├── RescueSheet-Ford-Mach-E-2026.pdf
-│   └── processed.log
-├── Talk/
-│   └── *_segments.json           # Whisper transcript output
-└── Sample n8n JSON/
-    └── 1.1 First Responder.json  # n8n workflow — import this
-```
-
----
-
-## Architecture
-
-```
-Browser
-  ├── 360° Video Player (Panolens + Three.js)
-  └── Chatbot UI
-        │  POST { question, session_id }
-        ▼
-    n8n Webhook
-        │
-    Router Agent (GPT-4o)
-        ├── erg_full tool      → Pinecone namespace: erg_full       (37 docs)
-        ├── rescue_sheet tool  → Pinecone namespace: rescue_sheet   (4 docs)
-        └── video_transcript   → Pinecone namespace: video_transcript (537 docs)
-```
-
-**Routing logic:**
-- How-to / procedural questions → `erg_full`
-- "Where is" / location questions → `rescue_sheet` first, then `erg_full`
-- Training video / instructor said → `video_transcript` first
-- Safety-critical → always cross-check `erg_full`
-
----
-
-## Chatbot Request / Response Format
-
-The portal POSTs to the n8n webhook:
-
-```json
-{ "question": "How do I shut off the HV system?", "session_id": "uuid-here" }
-```
-
-n8n returns:
-
-```json
-{ "output": "Step 1: Press the Start/Stop button..." }
-```
-
----
-
-## Tech Stack
-
-| Component | Technology |
+| Folder | What it is |
 |---|---|
-| Video player | Panolens.js + Three.js |
-| Chat UI | Vanilla JS + Marked.js |
-| AI agent | n8n (LangChain agent, GPT-4o) |
-| Vector store | Pinecone (`text-embedding-3-small`, 1536 dims) |
-| Chat memory | PostgreSQL (via n8n) |
-| PDF parsing | Unstructured (`partition_pdf`) + Tesseract OCR fallback |
-| Transcription | OpenAI Whisper (local, `turbo` model) |
-| Embeddings | OpenAI `text-embedding-3-small` |
+| `apps/portal/` | **The 360° portal you just ran** (IWSDK + TypeScript; start here) |
+| `apps/splat-vr/` | Gaussian-splat VR viewer with hazard hotspots and hand tracking |
+| `apps/v1/` | Older A-Frame version (kept as a fallback) |
+| `ingestion/` | PDF + transcript ingestion notebooks, Whisper transcription |
+| `ops/` | Live-workflow drift check and the automated eval harness |
+| `deploy/` | Publish scripts (S3 + CloudFront) with post-deploy integrity checks |
+| `docs/` | Evaluation write-ups |
+
+---
+
+## Want to go deeper? (optional)
+
+These steps need your own accounts and API keys. Skip them if you just want to try the portal.
+
+- **Use your own database and AI:** create a `.env` file in the project root with `OPENAI_API_KEY` and `PINECONE_API_KEY`, then run the notebooks in `ingestion/notebooks/` (Python 3.10).
+- **Run the evaluation:** `python3.10 ops/eval/run_eval.py --sample 10`
+- **Run the old version:** `cd apps/v1 && python3 -m http.server 8080`, then open http://localhost:8080/inspector_portal.html
 
 ---
 
 ## Troubleshooting
 
-**Whisper FP16 warning on Mac:**  
-`FP16 is not supported on CPU; using FP32 instead` — this is expected on Apple Silicon without CUDA. Transcription still works correctly.
+| Problem | Fix |
+|---|---|
+| `npm install` fails or complains about the Node version | Install Node 20 or newer: `node --version` |
+| Browser says the connection is not private | Normal for local testing. Click *Advanced → Proceed to localhost* |
+| Page is blank | Wait a few seconds, then refresh. Check the terminal for errors |
+| Chatbot doesn't reply | The hosted AI may be offline. Try again later, or set up your own (see above) |
+| Port 8081 already in use | Close the other program using it, or stop the earlier `npm run dev` |
 
-**`pip install openai-whisper` fails:**  
-Make sure you're using Python 3.11 (`/opt/homebrew/bin/python3.11`). Python 3.9 (macOS system default) lacks required packages.
+---
 
-**Chatbot returns "No matching information found":**  
-Check that Pinecone is reachable and the index name/namespace match exactly. Verify your `.env` keys are correct.
+## Author
 
-**n8n webhook not responding:**  
-Ensure the workflow is set to **Active** in n8n. Test mode webhooks only fire when the workflow editor is open.
+**Irfan Gazi** · [GitHub](https://github.com/Irfan-Gazi0)
+
+## License
+
+Apache-2.0. See `LICENSE`.
