@@ -1,4 +1,4 @@
-# First Responder AI Portal
+# First Responder training Portal
 
 **Grounded AI + VR training for electric-vehicle emergencies.**
 
@@ -6,17 +6,16 @@
 - 💬 **AI assistant** that answers from official manufacturer guides, with citations
 - 🚗 **VR vehicle scans** with clickable hazard hotspots
 
-**Live demo:** https://nec4-jumpstart.streamlit.app
 
 <p align="center">
-  <img src="docs/media/vr-demo.webp" alt="Asking a question inside the 360° video on a Meta Quest; the answer cites the ERG page and video timestamp" width="720">
+  <img src="docs/media/vr-demo.webp" alt="Asking a question inside the 360° video on a Meta Quest; the answer cites the ERG page and video timestamp" width="520">
   <br><em>On a Meta Quest 3: answers cite the guide page and video timestamp.</em>
 </p>
 
-| Desktop portal | VR vehicle scan |
+| Desktop portal | Gaussian Splat of the EV in VR |
 |---|---|
 | ![Desktop portal with 360° video and chat](docs/media/portal-desktop.png) | ![Hazard hotspot on a scanned Chevrolet Equinox EV](docs/media/splat-vr-demo.webp) |
-| 360° lecture + AI assistant | Tap a hotspot → cutting steps from the ERG |
+| 360° lecture video + AI assistant | Critical zones labeled with emergency response steps from official guides |
 
 ---
 
