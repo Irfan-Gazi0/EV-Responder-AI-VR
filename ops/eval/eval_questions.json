@@ -1,7 +1,7 @@
 {
   "evaluation_set": "Ford Mustang Mach-E 2026 First Responder RAG — Transcript QA",
   "generated_at": "2026-04-20",
-  "total_questions": 90,
+  "total_questions": 79,
   "namespace": "video_transcript_v2",
   "instructions": "Two question types. (1) source.video → transcript QA: check the cited video and that the timestamp is within ~60s of source.approximate_timestamp. (2) source.type=='pdf' → document QA: route the chatbot to source.namespace, compare the answer against expected_answer, and cross-check against source.pdf_file at source.pdf_page (PDF reader page) / source.printed_page (footer page) using source.verbatim_quote. NOTE (2026-06-15): IDs 61-90 are questions actually asked during the live training class — either posed by the instructor to the room or asked by a participant ('asked_by' field) — extracted from the Talk/ transcripts, including Video 0 (the intro lecture), which the original set did not cover.",
   "questions": [
@@ -661,127 +661,6 @@
         "pdf_page": 21,
         "printed_page": 21,
         "verbatim_quote": "Do not stabilize the vehicle with cribbing under the high-voltage battery."
-      }
-    },
-    {
-      "id": 61,
-      "topic": "Wiring color codes",
-      "asked_by": "trainer",
-      "question": "On a vehicle, what do orange and yellow wiring/conduit indicate, and what voltage does orange imply?",
-      "expected_answer": "Orange is always high voltage — over 100 volts — and must never be cut into. Yellow wiring and conduit is airbag-related; avoid cutting it to prevent an unintentional airbag deployment.",
-      "source": {
-        "video": "Video 0 — EV Emergency Response Fundamentals (Intro Lecture)",
-        "approximate_timestamp": "00:09:28"
-      }
-    },
-    {
-      "id": 62,
-      "topic": "HV disable methods",
-      "asked_by": "trainer",
-      "question": "What two methods does the instructor recommend a first responder use to disable high voltage before working on an EV?",
-      "expected_answer": "(1) Shut the car off (hit the power button, remove the key fob). (2) Cut or disconnect the 12-volt battery. Doing both isolates the high voltage inside the battery housing.",
-      "source": {
-        "video": "Video 0 — EV Emergency Response Fundamentals (Intro Lecture)",
-        "approximate_timestamp": "00:45:55"
-      }
-    },
-    {
-      "id": 63,
-      "topic": "Drive-ready detection",
-      "asked_by": "trainer",
-      "question": "The Chevy Equinox EV brought to class has no power button — how does it shut off, and what makes it drive-ready?",
-      "expected_answer": "It uses a seat occupant sensor. With someone in the seat and a foot on the brake the dash lights up; shifting to forward or reverse while braking makes it drive. There is no power button to press.",
-      "source": {
-        "video": "Video 0 — EV Emergency Response Fundamentals (Intro Lecture)",
-        "approximate_timestamp": "00:48:39"
-      }
-    },
-    {
-      "id": 64,
-      "topic": "Ready light",
-      "asked_by": "trainer",
-      "question": "How can a responder tell from the dashboard whether an EV is still capable of driving away?",
-      "expected_answer": "Look for the green READY light/symbol on the instrument cluster. It is always green and present when the vehicle is drive-ready; if the vehicle has been depowered the ready light will be off.",
-      "source": {
-        "video": "Video 0 — EV Emergency Response Fundamentals (Intro Lecture)",
-        "approximate_timestamp": "00:44:01"
-      }
-    },
-    {
-      "id": 65,
-      "topic": "Rescue sheet legend",
-      "asked_by": "trainer",
-      "question": "On the emergency response guide diagrams, what do the blue-shaded areas represent?",
-      "expected_answer": "Airbag-related devices or seat pretensioners — components that contain either a charged nitrogen cylinder or a pyrotechnic device.",
-      "source": {
-        "video": "Video 0 — EV Emergency Response Fundamentals (Intro Lecture)",
-        "approximate_timestamp": "00:53:53"
-      }
-    },
-    {
-      "id": 66,
-      "topic": "EV badging standard",
-      "asked_by": "trainer",
-      "question": "Per SAE J2929, what EV identification badging are manufacturers expected to provide?",
-      "expected_answer": "An EV badge recognizable by an approaching responder from 50 feet — at least one inch in size, with blue lettering, one on the rear and one on each side.",
-      "source": {
-        "video": "Video 0 — EV Emergency Response Fundamentals (Intro Lecture)",
-        "approximate_timestamp": "00:38:54"
-      }
-    },
-    {
-      "id": 67,
-      "topic": "Non-compliant brands",
-      "asked_by": "trainer",
-      "question": "Which manufacturers does the instructor say are not compliant with the EV badging standard, and why are they given a pass?",
-      "expected_answer": "Tesla, Lucid, and Rivian. Because they only make electric vehicles, the government gives them a pass — there is no gas version to distinguish, so they do not add the blue EV designation.",
-      "source": {
-        "video": "Video 0 — EV Emergency Response Fundamentals (Intro Lecture)",
-        "approximate_timestamp": "00:35:07"
-      }
-    },
-    {
-      "id": 68,
-      "topic": "Manual disconnect",
-      "asked_by": "trainer",
-      "question": "What color and location is the manual disconnect/interlock connector on recent domestic (Ford and GM) vehicles?",
-      "expected_answer": "A light-green colored connector located under the hood — standardized across most domestic vehicles for about the last five years.",
-      "source": {
-        "video": "Video 0 — EV Emergency Response Fundamentals (Intro Lecture)",
-        "approximate_timestamp": "00:25:54"
-      }
-    },
-    {
-      "id": 69,
-      "topic": "Cutting battery cable",
-      "asked_by": "trainer",
-      "question": "When cutting a 12-volt battery cable to depower a vehicle, what does the instructor say you must do?",
-      "expected_answer": "Make two cuts and remove the cut-out section of lead, so there is no way of accidentally reconnecting it.",
-      "source": {
-        "video": "Video 0 — EV Emergency Response Fundamentals (Intro Lecture)",
-        "approximate_timestamp": "00:49:49"
-      }
-    },
-    {
-      "id": 70,
-      "topic": "Stuck contactors",
-      "asked_by": "trainer",
-      "question": "Has the instructor encountered a case where a vehicle's high-voltage contactors stayed energized, and what did it require?",
-      "expected_answer": "Yes — one case (a shop in Ashland) where the contactors were stuck hot and would not de-energize. The technicians had to drop the battery with the orange cables still hot, treating the whole HV system as live and wearing lineman's gloves. It is extremely uncommon.",
-      "source": {
-        "video": "Video 0 — EV Emergency Response Fundamentals (Intro Lecture)",
-        "approximate_timestamp": "00:29:36"
-      }
-    },
-    {
-      "id": 71,
-      "topic": "12-volt role",
-      "asked_by": "trainer",
-      "question": "Why does every high-voltage EV also need a 12-volt system?",
-      "expected_answer": "The 12-volt system runs all the normal car parts (headlights, horn, blower, etc.) and, critically, energizes the contactors that let high voltage out of the battery. Shut down the 12V and the high voltage stays trapped in the battery housing.",
-      "source": {
-        "video": "Video 0 — EV Emergency Response Fundamentals (Intro Lecture)",
-        "approximate_timestamp": "00:22:41"
       }
     },
     {
