@@ -69,3 +69,9 @@ apps/splat-vr/.splat-src/
 
 # Streamlit Cloud log dumps downloaded from the app dashboard
 logs-*.txt
+
+# Local-only tooling/notes — kept off main (feature branch still tracks them)
+.claude/skills/
+.streamlit/
+progress.md
+skills-lock.json
