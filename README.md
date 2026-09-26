@@ -85,8 +85,8 @@ No API keys needed; the chatbot uses the hosted AI.
 
 ```bash
 # needs Node.js 20+
-git clone https://github.com/Irfan-Gazi0/RAG_Responder.git
-cd RAG_Responder/apps/portal
+git clone https://github.com/Irfan-Gazi0/EV-Responder-AI-VR.git
+cd EV-Responder-AI-VR/apps/portal
 npm install
 npm run dev        # opens https://localhost:8081
 ```
